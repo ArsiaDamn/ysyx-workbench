@@ -18,6 +18,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "sdb.h"
+#include "memory/vaddr.h"
 
 static int is_batch_mode = false;
 
@@ -52,6 +53,86 @@ static int cmd_q(char *args) {
   exit(0);
 }
 
+// 单步执行：si [N]，默认 N=1
+static int cmd_si(char *args) {
+  int n = 1;
+  if (args != NULL) {
+    // 跳过前导空格
+    while (*args == ' ') args++;
+    if (*args != '\0') {
+      char *end = NULL;
+      long v = strtol(args, &end, 10);
+      if (end == args) {
+        printf("Usage: si [N]\n");
+        return 0;
+      }
+      if (v <= 0) v = 1;
+      n = (int)v;
+    }
+  }
+  cpu_exec(n);
+  return 0;
+}
+
+// info r：打印寄存器
+static int cmd_info(char *args) {
+  if (args == NULL) {
+    printf("Usage: info r\n");
+    return 0;
+  }
+  while (*args == ' ') args++;
+  if (args[0] == 'r' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')) {
+    isa_reg_display();
+  } else {
+    printf("Unknown subcommand for info: %s\n", args);
+    printf("Usage: info r\n");
+  }
+  return 0;
+}
+
+// 扫描内存：x N EXPR（本版本先支持立即数 EXPR，十六进制或十进制）
+static int cmd_x(char *args) {
+  if (args == NULL) {
+    printf("Usage: x N EXPR\n");
+    return 0;
+  }
+
+  // 第一个参数 N
+  char *n_str = strtok(args, " \t");
+  // 第二个参数 EXPR（立即数解析）
+  char *expr_str = strtok(NULL, " \t");
+
+  if (n_str == NULL || expr_str == NULL) {
+    printf("Usage: x N EXPR\n");
+    return 0;
+  }
+
+  char *end = NULL;
+  long n = strtol(n_str, &end, 10);
+  if (end == n_str || n <= 0) {
+    printf("Invalid N: %s\n", n_str);
+    return 0;
+  }
+
+  unsigned long long addr = 0;
+  if (expr_str[0] == '0' && (expr_str[1] == 'x' || expr_str[1] == 'X')) {
+    addr = strtoull(expr_str, &end, 16);
+  } else {
+    addr = strtoull(expr_str, &end, 10);
+  }
+  if (end == expr_str) {
+    printf("Invalid EXPR (expect hex or dec immediate): %s\n", expr_str);
+    return 0;
+  }
+
+  // riscv32 每项读 4 字节，逐项输出
+  for (long i = 0; i < n; i++) {
+    uint32_t data = vaddr_read((vaddr_t)(addr + i * 4), 4);
+    printf("0x%08llx: 0x%08x\n", addr + i * 4, data);
+  }
+  return 0;
+}
+  
 static int cmd_help(char *args);
 
 static struct {
@@ -62,6 +143,10 @@ static struct {
   { "help", "Display information about all supported commands", cmd_help },
   { "c", "Continue the execution of the program", cmd_c },
   { "q", "Exit NEMU", cmd_q },
+  { "si",   "Single-step execute N instructions (default 1)",      cmd_si   },
+  { "info", "info r: print registers",                             cmd_info },
+  { "x",    "Scan memory: x N EXPR (EXPR is a hex/dec immediate)", cmd_x    },
+
 
   /* TODO: Add more commands */
 
@@ -95,7 +180,6 @@ static int cmd_help(char *args) {
 void sdb_set_batch_mode() {
   is_batch_mode = true;
 }
-
 void sdb_mainloop() {
   if (is_batch_mode) {
     cmd_c(NULL);
