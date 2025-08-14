@@ -19,9 +19,12 @@
  * Type 'man regex' for more information about POSIX regex functions.
  */
 #include <regex.h>
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
 
 enum {
-  TK_NOTYPE = 256, TK_EQ,
+  TK_NOTYPE = 256, TK_EQ,TK_DEC,TK_HEX,TK_REG,
 
   /* TODO: Add more token types */
 
@@ -37,8 +40,16 @@ static struct rule {
    */
 
   {" +", TK_NOTYPE},    // spaces
-  {"\\+", '+'},         // plus
   {"==", TK_EQ},        // equal
+  {"\\(",'('},          // (
+  {"\\)",')'},          // )
+  {"\\+", '+'},         // +
+  {"-", '-'},           // -
+  {"\\*", '*'},         // *
+  {"/", '/'},           // /
+  {"0[xX][0-9a-fA-F]+", TK_HEX},         // 16
+  {"[0-9]+", TK_DEC},                    // 10
+  {"\\$[A-Za-z0-9]+", TK_REG},           // reg
 };
 
 #define NR_REGEX ARRLEN(rules)
@@ -78,8 +89,11 @@ static bool make_token(char *e) {
   nr_token = 0;
 
   while (e[position] != '\0') {
+    
+
     /* Try all rules one by one. */
     for (i = 0; i < NR_REGEX; i ++) {
+      
       if (regexec(&re[i], e + position, 1, &pmatch, 0) == 0 && pmatch.rm_so == 0) {
         char *substr_start = e + position;
         int substr_len = pmatch.rm_eo;
@@ -88,16 +102,35 @@ static bool make_token(char *e) {
             i, rules[i].regex, position, substr_len, substr_len, substr_start);
 
         position += substr_len;
-
         /* TODO: Now a new token is recognized with rules[i]. Add codes
          * to record the token in the array `tokens'. For certain types
          * of tokens, some extra actions should be performed.
          */
+        int ttype = rules[i].token_type;
+        
+        if (ttype == TK_NOTYPE){break;}
 
-        switch (rules[i].token_type) {
-          default: TODO();
+        assert(nr_token < (int)(sizeof(tokens)/sizeof(tokens[0])));  //yuchu
+        tokens[nr_token].type = ttype;
+
+        if(ttype==TK_DEC||ttype==TK_HEX||ttype==TK_REG){
+          int copy_len = substr_len;
+          if(copy_len>(int)sizeof(tokens[nr_token].str)-1){
+            copy_len = (int)sizeof(tokens[nr_token].str)-1;
+          }
+          memcpy(tokens[nr_token].str,substr_start,copy_len);
+          tokens[nr_token].str[copy_len] = '\0';
+        }
+        else {
+          tokens[nr_token].str[0] = '\0';
         }
 
+        nr_token++;
+
+/*        switch (rules[i].token_type) {
+          default: TODO();
+        }
+*/
         break;
       }
     }
