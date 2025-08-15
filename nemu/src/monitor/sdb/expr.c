@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-
+#include <cpu/cpu.h>
 enum {
   TK_NOTYPE = 256, TK_EQ,TK_DEC,TK_HEX,TK_REG,TK_NEG,
 
@@ -146,11 +146,7 @@ static bool make_token(char *e) {
   return true;
 }
 // 666666666666666666666666666666666666666666666666666666666666666666666
-/* 选做：把一元 '-' 标记成 TK_NEG
- * 规则：当 '-' 出现在表达式开头，或其前一个 token 是以下任意之一：
- *       '(' '+' '-' '*' '/' TK_EQ
- * 则认为它是“取负”而非“减法”。
- */
+/* 选做：把一元 '-' 标记成 TK_NEG*/
 static void mark_unary_minus(void) {
   for (int i = 0; i < nr_token; i++) {
     if (tokens[i].type == '-') {
@@ -167,11 +163,7 @@ static void mark_unary_minus(void) {
   }
 }
 
-/* 判断 [p..q] 是否被“一对外层括号”完整包住
- * true：形如 "(   ...   )" 且这对括号把整个片段包住
- * false：否则
- * 括号不匹配时会把 *ok 置为 false
- */
+/* 判断 [p..q] 是否被“一对外层括号”完整包住,括号不匹配时会把 *ok 置为 false*/
 static bool check_parentheses(int p, int q, bool *ok) {
   if (p > q) { *ok = false; return false; }
   if (tokens[p].type != '(' || tokens[q].type != ')') return false;
@@ -199,17 +191,13 @@ static int precedence(int type) {
     case '-':   return 1;           // 加减
     case '*':
     case '/':   return 2;           // 乘除
-    // TK_NEG 是一元运算，优先级更高（不在这里由主导符选择处理）
     default:    return 100;         // 非双目运算
   }
 }
 
 /* 在 [p..q] 内寻找“主导运算符”的下标：
- * - 忽略括号内部（用深度计数）
- * - 选择优先级最低的；同级取“最左”（左结合）
- * - 一元运算如 TK_NEG 不在此选择（它在 eval 中单独判断）
  * 找不到返回 -1，并在错误情况时将 *ok=false
- */
+*/
 static int dominant_op(int p, int q, bool *ok) {
   int best = -1;
   int best_prec = 100;
@@ -248,19 +236,32 @@ static word_t eval(int p, int q, bool *ok) {
     int t = tokens[p].type;
     if (t == TK_DEC) {
       return (word_t)strtoul(tokens[p].str, NULL, 10);
-    } else if (t == TK_HEX) {
+    } 
+    else if (t == TK_HEX) {
       return (word_t)strtoul(tokens[p].str, NULL, 16);
-    } else if (t == TK_REG) {
+    } 
+    else if (t == TK_REG) {
+      // 跳过前缀 '$'，询问寄存器值
+      const char *name = tokens[p].str + 1;
       bool succ = false;
-      // 跳过前缀 '$'，询问 ISA 层寄存器值
-      word_t val = isa_reg_str2val(tokens[p].str + 1, &succ);
+      word_t val = isa_reg_str2val(name, &succ);
+      
+      //////////////////////1111111111111111111111111111111111111111111111
+
+      if (!succ &&(strcmp(name,"pc")==0)){
+        succ = true;
+        val = cpu.pc;
+      }
+      ///////////////////////1111111111111111111111111111111111111111111111
+
       if (!succ) {
         printf("Unknown register: %s\n", tokens[p].str);
         *ok = false;
         return 0;
       }
       return val;
-    } else {
+    } 
+    else {
       // 单个 token 但不是可直接求值的类型
       *ok = false;
       return 0;
