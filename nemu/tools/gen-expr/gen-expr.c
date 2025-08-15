@@ -31,8 +31,37 @@ static char *code_format =
 "  return 0; "
 "}";
 
+//sui ji shu 
+uint32_t choose(uint32_t n){
+  return rand() % n;
+}
+
+//sui ji shu generation
+void gen_num(){
+  uint32_t num = rand();
+  sprintf(buf + strlen(buf), "%u" ,num);
+}
+
+//sui ji op
+void gen_rand_op(){
+  const char ops[] = "+-*/";
+  int oop=choose(4);
+  buf[strlen(buf)] = ops[oop];
+  buf[strlen(buf)+1] = '\0';
+}
+
+// gen()
+void gen(const char *s){
+  strcat(buf,s);
+}
+
 static void gen_rand_expr() {
   buf[0] = '\0';
+  switch (choose(3)) {
+    case 0: gen_num(); break;
+    case 1: gen('('); gen_rand_expr(); gen(')'); break;
+    default: gen_rand_expr(); gen_rand_op(); gen_rand_expr(); break;
+  }
 }
 
 int main(int argc, char *argv[]) {
