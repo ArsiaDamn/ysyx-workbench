@@ -19,6 +19,7 @@
 #include <readline/history.h>
 #include "sdb.h"
 #include "memory/vaddr.h"
+#include <stdbool.h>
 
 static int is_batch_mode = false;
 
@@ -132,6 +133,27 @@ static int cmd_x(char *args) {
   }
   return 0;
 }
+
+//p dayinceshi
+static int cmd_p(char *args){
+  if(args==NULL){
+    printf("Udsge: p EXPR\n");
+    return 0;
+  }
+  bool ok = false;
+  word_t val = expr(args,&ok);
+  if(!ok){
+    printf("Bad expression: %s\n", args);
+    return 0;
+  }
+#if __riscv_xlen == 64 || defined(CONFIG_ISA64)
+  printf("= 0x%016lx (%lu)\n", (unsigned long)val, (unsigned long)val);
+#else
+  printf("= 0x%08x (%u)\n", (unsigned)val, (unsigned)val);
+#endif
+  return 0;
+}
+
   
 static int cmd_help(char *args);
 
@@ -146,7 +168,7 @@ static struct {
   { "si",   "Single-step execute N instructions (default 1)",      cmd_si   },
   { "info", "info r: print registers",                             cmd_info },
   { "x",    "Scan memory: x N EXPR (EXPR is a hex/dec immediate)", cmd_x    },
-
+  { "p",    "Evaluate expression: p EXPR", cmd_p },
 
   /* TODO: Add more commands */
 
