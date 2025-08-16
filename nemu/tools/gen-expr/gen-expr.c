@@ -141,12 +141,12 @@ int main(int argc, char *argv[]) {
     fp = popen("/tmp/.expr", "r");
     assert(fp != NULL);
 
-    int result;
-    ret = fscanf(fp, "%d", &result);
+    unsigned result;
+    ret = fscanf(fp, "%u", &result);
     (void)ret;
     pclose(fp);
 
-    printf("%u %s\n", (unsigned)result, buf);
+    printf("%u %s\n", result, buf);
   }
   return 0;
 }
