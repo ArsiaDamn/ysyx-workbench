@@ -19,48 +19,98 @@
 #include <time.h>
 #include <assert.h>
 #include <string.h>
+#include <stdarg.h>
+#include <unistd.h>
 
 // this should be enough
 static char buf[65536] = {};
 static char code_buf[65536 + 128] = {}; // a little larger than `buf`
 static char *code_format =
 "#include <stdio.h>\n"
+"#include <stdint.h>\n"
 "int main() { "
-"  unsigned result = %s; "
+"  uint32_t result = (uint32_t)(%s); "
 "  printf(\"%%u\", result); "
 "  return 0; "
 "}";
 
-//sui ji shu 
-uint32_t choose(uint32_t n){
-  return rand() % n;
+static size_t pos = 0;           // buf position 
+static int depth = 0;            
+static int need_nonzero_rhs = 0; // nozero
+
+//choose
+static inline uint32_t choose(uint32_t n){
+  return (uint32_t)(rand() % (int)n);
 }
 
-//sui ji shu generation
-void gen_num(){
-  uint32_t num = rand();
-  sprintf(buf + strlen(buf), "%u" ,num);
-}
-
-//sui ji op
-void gen_rand_op(){
-  const char ops[] = "+-*/";
-  int oop=choose(4);
-  buf[strlen(buf)] = ops[oop];
-  buf[strlen(buf)+1] = '\0';
+// write to buf safety
+static void append(const char *fmt, ...) {
+  if (pos >= sizeof(buf) - 1) return;
+  va_list ap;
+  va_start(ap, fmt);
+  size_t space = sizeof(buf) - 1 - pos;
+  int w = vsnprintf(buf + pos, space, fmt, ap);
+  va_end(ap);
+  if (w < 0) return;
+  if ((size_t)w > space) w = (int)space;
+  pos += (size_t)w;
 }
 
 // gen()
-void gen(const char *s){
-  strcat(buf,s);
+static inline void gen(char c) {
+  if (pos + 1 >= sizeof(buf)) return;
+  buf[pos++] = c;
+  buf[pos] = '\0';
+}
+
+// insert blank
+static void gen_blank(void) {
+  int k = (int)choose(3);
+  while (k--) gen(' ');
+}
+
+// gen_num 0~100
+static void gen_num(void) {
+  unsigned x = (unsigned)choose(100);
+  append("%u", x);
+}
+
+// gen_rand_op
+static void gen_rand_op(void) {
+  static const char ops[] = "+-*/";
+  char op = ops[choose(4)];
+  gen(op);
+  if (op == '/') need_nonzero_rhs = 1;
 }
 
 static void gen_rand_expr() {
-  buf[0] = '\0';
+ if (need_nonzero_rhs) {                 
+    unsigned x = 1u + (unsigned)choose(99);
+    append("%u", x);
+    need_nonzero_rhs = 0;
+    return;
+  }
+
+  const int MAX_DEPTH = 8;
+  if (depth > MAX_DEPTH || pos > sizeof(buf) - 64) {
+    gen_num();
+    return;
+  }
+
   switch (choose(3)) {
-    case 0: gen_num(); break;
-    case 1: gen('('); gen_rand_expr(); gen(')'); break;
-    default: gen_rand_expr(); gen_rand_op(); gen_rand_expr(); break;
+    case 0:
+      gen_num();
+      break;
+    case 1:
+      depth++;
+      gen('(');gen_blank();gen_rand_expr();gen_blank();gen(')');
+      depth--;
+      break;
+    default:
+      depth++;
+      gen_rand_expr();gen_blank();gen_rand_op();gen_blank();gen_rand_expr();
+      depth--;
+      break;
   }
 }
 
@@ -73,6 +123,9 @@ int main(int argc, char *argv[]) {
   }
   int i;
   for (i = 0; i < loop; i ++) {
+
+    pos=0;depth=0;need_nonzero_rhs=0;
+    buf[0]='\0';
     gen_rand_expr();
 
     sprintf(code_buf, code_format, buf);
@@ -90,9 +143,10 @@ int main(int argc, char *argv[]) {
 
     int result;
     ret = fscanf(fp, "%d", &result);
+    (void)ret;
     pclose(fp);
 
-    printf("%u %s\n", result, buf);
+    printf("%u %s\n", (unsigned)result, buf);
   }
   return 0;
 }

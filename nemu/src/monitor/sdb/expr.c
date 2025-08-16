@@ -25,7 +25,6 @@
 #include <cpu/cpu.h>
 enum {
   TK_NOTYPE = 256, TK_EQ,TK_DEC,TK_HEX,TK_REG,TK_NEG,
-
   /* TODO: Add more token types */
 
 };
@@ -78,7 +77,7 @@ typedef struct token {
   char str[32];
 } Token;
 
-static Token tokens[32] __attribute__((used)) = {};
+static Token tokens[1024] __attribute__((used)) = {};
 static int nr_token __attribute__((used))  = 0;
 
 static bool make_token(char *e) {
@@ -245,7 +244,7 @@ static word_t eval(int p, int q, bool *ok) {
       const char *name = tokens[p].str + 1;
       bool succ = false;
       word_t val = isa_reg_str2val(name, &succ);
-      
+
       //////////////////////1111111111111111111111111111111111111111111111
 
       if (!succ &&(strcmp(name,"pc")==0)){
