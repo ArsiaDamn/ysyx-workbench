@@ -138,10 +138,13 @@ int main(int argc, char *argv[]) {
     fp = popen("/tmp/.expr", "r");
     assert(fp != NULL);
 
-    int result;
+    unsigned result = 0;
     ret = fscanf(fp, "%d", &result);
-    (void)ret;
     pclose(fp);
+    if (ret != 1) {
+      fprintf(stderr, "[READ-FAIL] cannot parse output, expr=\"%s\"\n", buf);
+      continue;
+    }
 
     printf("%u %s\n", result, buf);
   }
