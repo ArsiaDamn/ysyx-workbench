@@ -27,9 +27,8 @@ static char buf[65536] = {};
 static char code_buf[65536 + 128] = {}; // a little larger than `buf`
 static char *code_format =
 "#include <stdio.h>\n"
-"#include <stdint.h>\n"
 "int main() { "
-"  uint32_t result = (uint32_t)(%s); "
+"  unsigned result = %s; "
 "  printf(\"%%u\", result); "
 "  return 0; "
 "}";
@@ -124,8 +123,6 @@ int main(int argc, char *argv[]) {
   int i;
   for (i = 0; i < loop; i ++) {
 
-    pos=0;depth=0;need_nonzero_rhs=0;
-    buf[0]='\0';
     gen_rand_expr();
 
     sprintf(code_buf, code_format, buf);
@@ -141,8 +138,8 @@ int main(int argc, char *argv[]) {
     fp = popen("/tmp/.expr", "r");
     assert(fp != NULL);
 
-    unsigned result;
-    ret = fscanf(fp, "%u", &result);
+    int result;
+    ret = fscanf(fp, "%d", &result);
     (void)ret;
     pclose(fp);
 

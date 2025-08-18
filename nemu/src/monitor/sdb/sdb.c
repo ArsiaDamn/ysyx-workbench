@@ -20,6 +20,8 @@
 #include "sdb.h"
 #include "memory/vaddr.h"
 #include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 
 static int is_batch_mode = false;
 
@@ -134,7 +136,7 @@ static int cmd_x(char *args) {
   return 0;
 }
 
-//p dayinceshi
+//p 测试expr（）
 static int cmd_p(char *args){
   if(args==NULL){
     printf("Udsge: p EXPR\n");
@@ -154,7 +156,61 @@ static int cmd_p(char *args){
   return 0;
 }
 
-  
+//test-expr PATH: 批量读取 PATH， expr() 校验
+static int cmd_test_expr(char *args) {
+  if (args == NULL) {
+    printf("Usage: test-expr PATH\n");
+    return 0;
+  }
+  while (*args == ' ' || *args == '\t') args++;
+  if (*args == '\0') {
+    printf("Usage: test-expr PATH\n");
+    return 0;
+  }
+
+  const char *path = args;  // 简单起见：把余下整行当作路径（若含空格可自行加引号并去掉）
+
+  FILE *fp = fopen(path, "r");
+  if (fp == NULL) {
+    printf("Cannot open input file: %s\n", path);
+    return 0;
+  }
+
+  char line[1 << 16];
+  unsigned total = 0, fail = 0;
+
+  while (fgets(line, sizeof(line), fp)) {
+    char *p = line;
+    while (*p == ' ' || *p == '\t') p++;
+    if (*p == '\0' || *p == '\n') continue;
+
+    unsigned expected = 0;
+    int off = 0;
+    if (sscanf(p, "%u %n", &expected, &off) != 1) {
+      printf("[WARN] Bad line: %s", line);
+      continue;
+    }
+    char *expr_str = p + off;
+    expr_str[strcspn(expr_str, "\r\n")] = '\0';
+
+    bool ok = true;
+    word_t got = expr(expr_str, &ok);
+    if (!ok) {
+      printf("[FAIL] expr() parse/eval failed | %s\n", expr_str);
+      fail++;
+    } else if (got != (word_t)expected) {
+      printf("[FAIL] expect=%u got=%u | %s\n", expected, (unsigned)got, expr_str);
+      fail++;
+    }
+    total++;
+  }
+
+  fclose(fp);
+  printf("[SUMMARY] %u cases, %u failed\n", total, fail);
+  return 0;
+}
+
+
 static int cmd_help(char *args);
 
 static struct {
@@ -169,6 +225,7 @@ static struct {
   { "info", "info r: print registers",                             cmd_info },
   { "x",    "Scan memory: x N EXPR (EXPR is a hex/dec immediate)", cmd_x    },
   { "p",    "Evaluate expression: p EXPR", cmd_p },
+   { "test-expr", "Run expressions from file: test-expr PATH",      cmd_test_expr },
 
   /* TODO: Add more commands */
 
