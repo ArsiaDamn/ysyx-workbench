@@ -199,7 +199,7 @@ static int cmd_test_expr(char *args) {
       printf("[FAIL] line:%s expr() parse/eval failed | %s\n", line,expr_str);
       fail++;
     } else if (got != (word_t)expected) {
-      printf("[FAIL] expect=%u got=%u | %s\n", expected, (unsigned)got, expr_str);
+      printf("[FAIL] line:%s expect=%u got=%u | %s\n", line , expected, (unsigned)got, expr_str);
       fail++;
     }
     total++;
