@@ -37,6 +37,50 @@ int main(int argc, char *argv[]) {
 
 
 ///////////////////////////////////////////////////////////////////////
+  if (argc > 1) {
+    const char *path = argv[1];
+    FILE *fp = fopen(path, "r");
+    if (fp == NULL) {
+      printf("Cannot open input file: %s\n", path);
+      return 1;
+    }
+    char line[1 << 16];   // 足够长
+    unsigned total = 0, fail = 0;
+
+    while (fgets(line, sizeof(line), fp)) {
+      // 跳过空行
+      char *p = line;
+      while (*p == ' ' || *p == '\t') p++;
+      if (*p == '\0' || *p == '\n') continue;
+
+      // 解析“期望结果 + 空格 + 表达式”
+      unsigned expected = 0;
+      int off = 0;
+      if (sscanf(p, "%u %n", &expected, &off) != 1) {
+        // 行格式不对，跳过
+        printf("[WARN] Bad line: %s", line);
+        continue;
+      }
+      char *expr_str = p + off;
+      // 去掉行尾换行
+      expr_str[strcspn(expr_str, "\r\n")] = '\0';
+
+      bool ok = true;
+      word_t got = expr(expr_str, &ok);
+      if (!ok) {
+        printf("[FAIL] expr() failed: %s\n", expr_str);
+        fail++;
+      } else if (got != (word_t)expected) {
+        printf("[FAIL] expect=%u got=%u | %s\n", expected, (unsigned)got, expr_str);
+        fail++;
+      }
+        total++;
+    }
+    fclose(fp);
+    printf("[SUMMARY] %u cases, %u failed\n", total, fail);
+    return fail ? 1 : 0;
+  }
+
 
 /////////////////////////////////////////////////////////////////////////////////////////
 

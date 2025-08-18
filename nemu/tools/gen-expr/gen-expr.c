@@ -29,7 +29,7 @@ static char *code_format =
 "#include <stdio.h>\n"
 "int main() { "
 "  unsigned result = %s; "
-"  printf(\"%%u\", result); "
+"  printf(\"%%u\\n\", result); "
 "  return 0; "
 "}";
 
@@ -83,7 +83,7 @@ static void gen_rand_op(void) {
 }
 
 static void gen_rand_expr() {
- if (need_nonzero_rhs) {                 
+  if (need_nonzero_rhs) {                 
     unsigned x = 1u + (unsigned)choose(99);
     append("%u", x);
     need_nonzero_rhs = 0;
@@ -123,6 +123,7 @@ int main(int argc, char *argv[]) {
   int i;
   for (i = 0; i < loop; i ++) {
 
+    pos=0;buf[0]='\0';need_nonzero_rhs=0;
     gen_rand_expr();
 
     sprintf(code_buf, code_format, buf);
@@ -138,8 +139,8 @@ int main(int argc, char *argv[]) {
     fp = popen("/tmp/.expr", "r");
     assert(fp != NULL);
 
-    unsigned result = 0;
-    ret = fscanf(fp, "%d", &result);
+    unsigned result=0;
+    ret = fscanf(fp, "%u", &result);
     pclose(fp);
     if (ret != 1) {
       fprintf(stderr, "[READ-FAIL] cannot parse output, expr=\"%s\"\n", buf);
@@ -148,5 +149,6 @@ int main(int argc, char *argv[]) {
 
     printf("%u %s\n", result, buf);
   }
+
   return 0;
 }
