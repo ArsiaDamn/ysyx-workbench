@@ -196,10 +196,10 @@ static int cmd_test_expr(char *args) {
     bool ok = true;
     word_t got = expr(expr_str, &ok);
     if (!ok) {
-      printf("[FAIL] line:%u expr() parse/eval failed | %s\n", total,expr_str);
+      printf("[FAIL LINE:%u] expr() parse/eval failed | %s\n", total,expr_str);
       fail++;
     } else if (got != (word_t)expected) {
-      printf("[FAIL] line:%u expect=%u got=%u | %s\n", total , expected, (unsigned)got, expr_str);
+      printf("[FAIL LINE:%u] expect=%u got=%u | %s\n", total , expected, (unsigned)got, expr_str);
       fail++;
     }
     
