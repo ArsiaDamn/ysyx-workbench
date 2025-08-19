@@ -23,6 +23,7 @@
 #include <string.h>
 #include <assert.h>
 #include <cpu/cpu.h>
+
 enum {
   TK_NOTYPE = 256, TK_EQ,TK_DEC,TK_HEX,TK_REG,TK_NEG,
   /* TODO: Add more token types */
@@ -216,7 +217,7 @@ static int dominant_op(int p, int q, bool *ok) {
     // 只考虑双目运算符
     if (t == TK_EQ || t == '+' || t == '-' || t == '*' || t == '/') {
       int prec = precedence(t);
-      if (prec < best_prec) {
+      if (prec <= best_prec) {
         best_prec = prec;
         best = i;           // 更低优先级，直接更新
       }
@@ -274,13 +275,13 @@ static word_t eval(int p, int q, bool *ok) {
   }
   if (!*ok) return 0;
 
-  // 3) 一元负号（选做）：如果起点就是 TK_NEG，求右边并取负
+  // 3) 负号：如果起点就是 TK_NEG，求右边并取负
   if (tokens[p].type == TK_NEG) {
     word_t rhs = eval(p + 1, q, ok);
     if (!*ok) return 0;
-    // 这里用 (word_t)(-(int64_t)rhs) 可以得到与 ISA 字长一致的二进制补码
-    int64_t s = -(int64_t)rhs;
-    return (word_t)s;
+
+    int32_t s = -(int32_t)rhs;          // 32 位有符号取负     
+    return (word_t)(uint32_t)s;         // 以无符号形式返回
   }
 
   // 4) 找到顶层主导运算符
@@ -294,8 +295,8 @@ static word_t eval(int p, int q, bool *ok) {
   word_t rhs = eval(op + 1, q,     ok);
   if (!*ok) return 0;
 
-  // 6) 执行该运算
-  switch (tokens[op].type) {
+  // 6) 执行该运算version1
+/*  switch (tokens[op].type) {
     case TK_EQ: return (lhs == rhs) ? 1 : 0;
     case '+':   return lhs + rhs;
     case '-':   return lhs - rhs;
@@ -312,6 +313,36 @@ static word_t eval(int p, int q, bool *ok) {
       return 0;
   }
 }
+*/
+// 6) 执行该运算version2
+  int32_t lhs_s = (int32_t)lhs;   int32_t rhs_s = (int32_t)rhs;
+  switch (tokens[op].type) {
+    case TK_EQ: {
+      return (lhs_s == rhs_s) ? 1 : 0;
+    }
+    case '+': {
+      int64_t s = (int64_t)lhs_s + (int64_t)rhs_s;
+      return (word_t)(uint32_t)(int32_t)s; // 截断到 32 位
+    }
+    case '-': {
+      int64_t s = (int64_t)lhs_s - (int64_t)rhs_s;
+      return (word_t)(uint32_t)(int32_t)s;
+    }
+    case '*': {
+      int64_t s = (int64_t)lhs_s * (int64_t)rhs_s;
+      return (word_t)(uint32_t)(int32_t)s;
+    }
+    case '/': {
+      if (rhs_s == 0) { printf("Division by zero\n"); *ok = false; return 0; }
+      int32_t s = lhs_s / rhs_s;         // 有符号整除，向 0 取整
+      return (word_t)(uint32_t)s;
+    }
+    default:
+      *ok = false; 
+      return 0;
+  }
+}
+
 
 // 6666666666666666666666666666666666666666666666666666666666666666666666
 word_t expr(char *e, bool *success) {
