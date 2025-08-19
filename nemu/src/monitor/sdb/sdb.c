@@ -178,8 +178,8 @@ static int cmd_test_expr(char *args) {
 
   char line[1 << 16];
   unsigned total = 0, fail = 0;
-
   while (fgets(line, sizeof(line), fp)) {
+    total++;
     char *p = line;
     while (*p == ' ' || *p == '\t') p++;
     if (*p == '\0' || *p == '\n') continue;
@@ -196,13 +196,13 @@ static int cmd_test_expr(char *args) {
     bool ok = true;
     word_t got = expr(expr_str, &ok);
     if (!ok) {
-      printf("[FAIL] line:%s expr() parse/eval failed | %s\n", line,expr_str);
+      printf("[FAIL] line:%u expr() parse/eval failed | %s\n", total,expr_str);
       fail++;
     } else if (got != (word_t)expected) {
-      printf("[FAIL] line:%s expect=%u got=%u | %s\n", line , expected, (unsigned)got, expr_str);
+      printf("[FAIL] line:%u expect=%u got=%u | %s\n", total , expected, (unsigned)got, expr_str);
       fail++;
     }
-    total++;
+    
   }
 
   fclose(fp);
