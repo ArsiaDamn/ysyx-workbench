@@ -233,7 +233,14 @@ static int cmd_w(char *args){(void)args;puts("Watchpoints disabled.");return 0; 
 static int cmd_d(char *args){(void)args;puts("Watchpoints disabled.");return 0; }
 // info 仅 r 
 static int cmd_info(char *args) {
-  if (args && *args=='r') { isa_reg_display(); return 0; }
+  if (args == NULL) {
+    printf("Usage: info r | info w\n");
+    return 0;
+  }
+  while (*args == ' ') args++;
+  if (args[0] == 'r' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')) {
+    isa_reg_display();
+  }
   //puts("Usage: info r  (watchpoints disabled)");
   return 0;
 }
