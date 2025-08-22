@@ -200,7 +200,7 @@ static int cmd_d(char *args) {
 // info r | w：打印寄存器 | 监视点
 static int cmd_info(char *args) {
   if (args == NULL) {
-    printf("Usage: info r | info w\n");
+    printf("Plesase type: info r | info w\n");
     return 0;
   }
   while (*args == ' ') args++;
@@ -234,7 +234,7 @@ static int cmd_d(char *args){(void)args;puts("Watchpoints disabled.");return 0; 
 // info 仅 r 
 static int cmd_info(char *args) {
   if (args == NULL) {
-    printf("Usage: info r | info w\n");
+    printf("Please type: info r | info w\n");
     return 0;
   }
   while (*args == ' ') args++;
