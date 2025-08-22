@@ -14,6 +14,9 @@
 ***************************************************************************************/
 
 #include "sdb.h"
+
+#ifdef CONFIG_WATCHPOINT
+
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
@@ -142,3 +145,16 @@ int check_watchpoints() {
   }
   return trig;
 }
+
+#else  // CONFIG_WATCHPOINT 关闭时提供空/桩实现以避免链接错误
+
+WP *head = NULL;
+
+void init_wp_pool(void) {}
+WP* new_wp(void) { return NULL; }
+void free_wp(WP *wp) { (void)wp; }
+WP* find_wp(int no) { (void)no; return NULL; }
+void list_watchpoints(void) { puts("Watchpoints disabled (CONFIG_WATCHPOINT=n)."); }
+int  check_watchpoints(void) { return 0; }
+
+#endif // CONFIG_WATCHPOINT

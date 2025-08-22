@@ -78,37 +78,6 @@ static int cmd_si(char *args) {
   return 0;
 }
 
-// info r：打印寄存器
-static int cmd_info(char *args) {
-  if (args == NULL) {
-    printf("Usage: info r | info w\n");
-    return 0;
-  }
-  while (*args == ' ') args++;
-  if (args[0] == 'r' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')) {
-    isa_reg_display();
-  } 
-  else if (args[0] == 'w' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')){
-    if (!head) {
-      printf("No watchpoints.\n");
-    }
-    else {
-      printf("Num  Expression                        Value(dec)   Value(hex)\n");
-      for (WP *p = head; p; p = p->next) {
-        printf("%3d  %-32s %10u   0x%08x\n",
-               p->NO,
-               p->expr[0] ? p->expr : "(unset)",
-               p->last_val, p->last_val);
-      }
-    }
-  }
-  else {
-    printf("Unknown subcommand for info: %s\n", args);
-    printf("Usage: info r | info w\n");
-  }
-  return 0;
-}
-
 // 扫描内存：x N EXPR（本版本先支持立即数 EXPR，十六进制或十进制）
 static int cmd_x(char *args) {
   if (args == NULL) {
@@ -172,6 +141,7 @@ static int cmd_p(char *args){
   return 0;
 }
 
+#ifdef CONFIG_WATCHPOINT
 // w EXPR 设置监视点
 static int cmd_w(char *args) {
   if (args == NULL) {
@@ -226,6 +196,48 @@ static int cmd_d(char *args) {
   printf("Deleted watchpoint %ld\n", no);
   return 0;
 }
+
+// info r | w：打印寄存器 | 监视点
+static int cmd_info(char *args) {
+  if (args == NULL) {
+    printf("Usage: info r | info w\n");
+    return 0;
+  }
+  while (*args == ' ') args++;
+  if (args[0] == 'r' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')) {
+    isa_reg_display();
+  } 
+  else if (args[0] == 'w' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')){
+    if (!head) {
+      printf("No watchpoints.\n");
+    }
+    else {
+      printf("Num  Expression                        Value(dec)   Value(hex)\n");
+      for (WP *p = head; p; p = p->next) {
+        printf("%3d  %-32s %10u   0x%08x\n",
+               p->NO,
+               p->expr[0] ? p->expr : "(unset)",
+               p->last_val, p->last_val);
+      }
+    }
+  }
+  else {
+    printf("Unknown subcommand for info: %s\n", args);
+    printf("Usage: info r | info w\n");
+  }
+  return 0;
+}
+#else
+//在关闭时提示
+static int cmd_w(char *args){(void)args;puts("Watchpoints disabled.");return 0; }
+static int cmd_d(char *args){(void)args;puts("Watchpoints disabled.");return 0; }
+// info 仅 r 
+static int cmd_info(char *args) {
+  if (args && *args=='r') { isa_reg_display(); return 0; }
+  //puts("Usage: info r  (watchpoints disabled)");
+  return 0;
+}
+#endif
 
 //test-expr PATH: 批量读取 PATH， expr() 校验
 static int cmd_test_expr(char *args) {
@@ -293,14 +305,17 @@ static struct {
   { "c", "Continue the execution of the program",                  cmd_c },
   { "q", "Exit NEMU",                                              cmd_q },
   { "si",   "Single-step execute N instructions (default 1)",      cmd_si   },
-  { "info", "info r | info w: print registers | watchpoints",      cmd_info },
   { "x",    "Scan memory: x N EXPR (EXPR is a hex/dec immediate)", cmd_x    },
   { "p",    "Evaluate expression: p EXPR",                         cmd_p },
   { "test-expr", "Run expressions from file: test-expr PATH",      cmd_test_expr },
   { "w",    "Set a watchpoint: w EXPR",                            cmd_w },                 
-  { "d",    "Delete a watchpoint: d N",                            cmd_d },   
+  { "d",    "Delete a watchpoint: d N",                            cmd_d },
+  #ifdef CONFIG_WATCHPOINT
+  { "info", "info r | info w: print registers | watchpoints",      cmd_info },
+  #else
+  { "info r", "print registers",                             cmd_info },  
+  #endif
   /* TODO: Add more commands */
-
 };
 
 #define NR_CMD ARRLEN(cmd_table)
@@ -373,6 +388,8 @@ void init_sdb() {
   /* Compile the regular expressions. */
   init_regex();
 
+  #ifdef CONFIG_WATCHPOINT
   /* Initialize the watchpoint pool. */
   init_wp_pool();
+  #endif
 }
