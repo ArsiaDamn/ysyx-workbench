@@ -17,6 +17,7 @@
 #include <cpu/decode.h>
 #include <cpu/difftest.h>
 #include <locale.h>
+#include "../monitor/sdb/sdb.h"
 
 /* The assembly code of instructions executed is only output to the screen
  * when the number of instructions executed is less than this value.
@@ -71,16 +72,23 @@ static void exec_once(Decode *s, vaddr_t pc) {
 #endif
 }
 
+///6666666666666666666666666666666666666666666666666666666
 static void execute(uint64_t n) {
   Decode s;
   for (;n > 0; n --) {
     exec_once(&s, cpu.pc);
     g_nr_guest_inst ++;
     trace_and_difftest(&s, cpu.pc);
+    if (nemu_state.state == NEMU_RUNNING){
+      if (check_watchpoints()){
+        nemu_state.state = NEMU_STOP;
+      }
+    }
     if (nemu_state.state != NEMU_RUNNING) break;
     IFDEF(CONFIG_DEVICE, device_update());
   }
 }
+///66666666666666666666666666666666666666666666666666666666
 
 static void statistic() {
   IFNDEF(CONFIG_TARGET_AM, setlocale(LC_NUMERIC, ""));

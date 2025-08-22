@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 static int is_batch_mode = false;
 
@@ -80,15 +81,30 @@ static int cmd_si(char *args) {
 // info r：打印寄存器
 static int cmd_info(char *args) {
   if (args == NULL) {
-    printf("Usage: info r\n");
+    printf("Usage: info r | info w\n");
     return 0;
   }
   while (*args == ' ') args++;
   if (args[0] == 'r' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')) {
     isa_reg_display();
-  } else {
+  } 
+  else if (args[0] == 'w' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')){
+    if (!head) {
+      printf("No watchpoints.\n");
+    }
+    else {
+      printf("Num  Expression                        Value(dec)   Value(hex)\n");
+      for (WP *p = head; p; p = p->next) {
+        printf("%3d  %-32s %10u   0x%08x\n",
+               p->NO,
+               p->expr[0] ? p->expr : "(unset)",
+               p->last_val, p->last_val);
+      }
+    }
+  }
+  else {
     printf("Unknown subcommand for info: %s\n", args);
-    printf("Usage: info r\n");
+    printf("Usage: info r | info w\n");
   }
   return 0;
 }
@@ -136,7 +152,7 @@ static int cmd_x(char *args) {
   return 0;
 }
 
-//p 测试expr（）
+//p EXPR 测试expr（）
 static int cmd_p(char *args){
   if(args==NULL){
     printf("Udsge: p EXPR\n");
@@ -153,6 +169,61 @@ static int cmd_p(char *args){
 #else
   printf("= 0x%08x (%u)\n", (unsigned)val, (unsigned)val);
 #endif
+  return 0;
+}
+
+// w EXPR 设置监视点
+static int cmd_w(char *args) {
+  if (args == NULL) {
+    printf("Usage: w EXPR\n");
+    return 0;
+  }
+  while (*args==' '||*args=='\t') args++;
+  if (*args=='\0') {
+    printf("Usage: w EXPR\n");
+    return 0;
+  }
+  // 申请监视点
+  WP *wp = new_wp();
+  // 保存表达式
+  strncpy(wp->expr, args, sizeof(wp->expr)-1);
+  wp->expr[sizeof(wp->expr)-1] = '\0';
+  // 求初值
+  bool ok = true;
+  word_t v = expr(wp->expr, &ok);
+  if (!ok) {
+    printf("Invalid expression: %s\n", wp->expr);
+    free_wp(wp);
+    return 0;
+  }
+  wp->last_val = (uint32_t)v;
+  printf("Watchpoint %d set: %s = %u (0x%08x)\n",
+         wp->NO, wp->expr, wp->last_val, wp->last_val);
+  return 0;
+}
+
+// d N 删除监视点 
+static int cmd_d(char *args) {
+  if (args == NULL) {
+    printf("Usage: d N\n");
+    return 0;
+  }
+  while (*args==' '||*args=='\t') args++;
+  if (*args=='\0') { printf("Usage: d N\n"); return 0; }
+
+  char *end=NULL;
+  long no = strtol(args,&end,10);
+  if (end==args || no<0) {
+    printf("Bad number: %s\n", args);
+    return 0;
+  }
+  WP *wp = find_wp((int)no);
+  if (!wp) {
+    printf("No such watchpoint: %ld\n", no);
+    return 0;
+  }
+  free_wp(wp);
+  printf("Deleted watchpoint %ld\n", no);
   return 0;
 }
 
@@ -218,15 +289,16 @@ static struct {
   const char *description;
   int (*handler) (char *);
 } cmd_table [] = {
-  { "help", "Display information about all supported commands", cmd_help },
-  { "c", "Continue the execution of the program", cmd_c },
-  { "q", "Exit NEMU", cmd_q },
+  { "help", "Display information about all supported commands",    cmd_help },
+  { "c", "Continue the execution of the program",                  cmd_c },
+  { "q", "Exit NEMU",                                              cmd_q },
   { "si",   "Single-step execute N instructions (default 1)",      cmd_si   },
-  { "info", "info r: print registers",                             cmd_info },
+  { "info", "info r | info w: print registers | watchpoints",      cmd_info },
   { "x",    "Scan memory: x N EXPR (EXPR is a hex/dec immediate)", cmd_x    },
-  { "p",    "Evaluate expression: p EXPR", cmd_p },
-   { "test-expr", "Run expressions from file: test-expr PATH",      cmd_test_expr },
-
+  { "p",    "Evaluate expression: p EXPR",                         cmd_p },
+  { "test-expr", "Run expressions from file: test-expr PATH",      cmd_test_expr },
+  { "w",    "Set a watchpoint: w EXPR",                            cmd_w },                 
+  { "d",    "Delete a watchpoint: d N",                            cmd_d },   
   /* TODO: Add more commands */
 
 };

@@ -17,21 +17,26 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #define NR_WP 32
-#define WP_EXPR_MAX 256
+//#define WP_EXPR_MAX 256
 
-typedef struct watchpoint {
+/*
+  //结构体已在 sdb.h 中定义
+  typedef struct watchpoint {
   int NO;
   struct watchpoint *next;
   char expr[WP_EXPR_MAX];   // 保存输入的表达式
   uint32_t last_val;        // 上一次值
-  /* TODO: Add more members if necessary */
+  // TODO: Add more members if necessary 
 
 } WP;
+*/
 
-static WP wp_pool[NR_WP] = {};
-static WP *head = NULL, *free_ = NULL;
+WP *head = NULL;
+static WP wp_pool[NR_WP];
+static WP *free_ = NULL;
 
 void init_wp_pool() {
   int i;
@@ -68,7 +73,6 @@ WP* new_wp() {
 // 释放监视点到free链
 void free_wp(WP *wp) {
   if (wp == NULL) return;
-
   // 从 head 链删掉
   if (head == wp) {
     head = wp->next;
@@ -90,12 +94,27 @@ WP* wp_head() {
   return head;
 }
 
-// 通过 NO 查找（d 命令）
-WP* wp_find(int no) {
-  for (WP *p = head; p; p = p->next) {
+// NO 查找（d 命令）
+WP* find_wp(int no) {
+  for (WP *p=head;p;p=p->next) {
     if (p->NO == no) return p;
   }
   return NULL;
+}
+
+// 列出所有活动监视点
+void list_watchpoints() {
+  if (!head) {
+    printf("No watchpoints.\n");
+    return;
+  }
+  printf("Num Expr                               Value(dec/hex)\n");
+  for (WP *p = head; p; p = p->next) {
+    printf("%3d %-32s %10u (0x%08x)\n",
+           p->NO,
+           p->expr[0] ? p->expr : "(unset)",
+           p->last_val, p->last_val);
+  }
 }
 
 // 监视点检查（ cpu_exec 调用）
