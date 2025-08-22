@@ -326,7 +326,7 @@ static struct {
   #ifdef CONFIG_WATCHPOINT
   { "info", "info r | info w: print registers | watchpoints",      cmd_info },
   #else
-  { "info r", "print registers",                             cmd_info },  
+  { "info", "print registers",                             cmd_info },  
   #endif
   /* TODO: Add more commands */
 };
