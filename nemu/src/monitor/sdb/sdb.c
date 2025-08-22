@@ -241,8 +241,14 @@ static int cmd_info(char *args) {
   if (args[0] == 'r' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')) {
     isa_reg_display();
   }
-  //puts("Usage: info r  (watchpoints disabled)");
-  return 0;
+  else if (args[0] == 'w' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')){
+    printf("Usage: info r  (watchpoints disabled)");
+  }
+  else {
+    printf("Unknown subcommand for info: %s\n", args);
+    printf("Usage: info r\n");
+  }
+  return 0; 
 }
 #endif
 
