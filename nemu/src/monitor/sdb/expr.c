@@ -294,6 +294,7 @@ static word_t eval(int p, int q, bool *ok) {
       bool succ = false;
       word_t val = isa_reg_str2val(name, &succ);
 
+      /*
       //////////////////////1111111111111111111111111111111111111111111111
 
       if (!succ &&(strcmp(name,"pc")==0)){
@@ -301,7 +302,8 @@ static word_t eval(int p, int q, bool *ok) {
         val = cpu.pc;
       }
       ///////////////////////1111111111111111111111111111111111111111111111
-
+      */
+     
       if (!succ) {
         printf("Unknown register: %s\n", tokens[p].str);
         *ok = false;
