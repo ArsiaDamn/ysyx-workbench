@@ -42,3 +42,11 @@ _default:
 	@echo "Please run 'make' under subprojects."
 
 .PHONY: .git_commit .clean_index _default
+
+.PHONY: count
+count:
+	@cur=$$(git ls-tree -r --name-only pa1 -- nemu | grep -E '\.(c|h)$$' | while read -r f; do git show pa1:$$f; done | wc -l); \
+	pre=$$(git ls-tree -r --name-only pa0  -- nemu | grep -E '\.(c|h)$$' | while read -r f; do git show pa0:$$f;  done | wc -l); \
+	echo "[Current] nemu .c/.h total in :"; echo $$cur; \
+	echo "[Present] nemu .c/.h total in :"; echo $$pre; \
+	echo "The adder is :"; echo $$((cur - pre))
