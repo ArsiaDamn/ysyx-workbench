@@ -44,11 +44,11 @@ static inline uint32_t choose(uint32_t n){
 
 // write to buf safety
 static void append(const char *fmt, ...) {
-  if (pos >= sizeof(buf) - 1) return;
+  if (pos >= sizeof(buf) - 1) return; // buf no space
   va_list ap;
-  va_start(ap, fmt);
+  va_start(ap, fmt); //ap -> fmt+1
   size_t space = sizeof(buf) - 1 - pos;
-  int w = vsnprintf(buf + pos, space, fmt, ap);
+  int w = vsnprintf(buf + pos, space, fmt, ap); //lenth
   va_end(ap);
   if (w < 0) return;
   if ((size_t)w > space) w = (int)space;
@@ -79,16 +79,16 @@ static void gen_rand_op(void) {
   static const char ops[] = "+-*/";
   char op = ops[choose(4)];
   gen(op);
-  if (op == '/') need_nonzero_rhs = 1;
+  //if (op == '/') need_nonzero_rhs = 1;
 }
 
 static void gen_rand_expr() {
-  if (need_nonzero_rhs) {                 
-    unsigned x = 1u + (unsigned)choose(99);
-    append("%u", x);
-    need_nonzero_rhs = 0;
-    return;
-  }
+  // if (need_nonzero_rhs) {                 
+  //   unsigned x = 1u + (unsigned)choose(99);
+  //   append("%u", x);
+  //   need_nonzero_rhs = 0;
+  //   return;
+  // }
 
   const int MAX_DEPTH = 8;
   if (depth > MAX_DEPTH || pos > sizeof(buf) - 64) {
@@ -116,34 +116,34 @@ static void gen_rand_expr() {
 int main(int argc, char *argv[]) {
   int seed = time(0);
   srand(seed);
-  int loop = 1;
+
+  int loop = 1; //run times
   if (argc > 1) {
     sscanf(argv[1], "%d", &loop);
   }
+
   int i;
   for (i = 0; i < loop; i ++) {
-
     pos=0;buf[0]='\0';need_nonzero_rhs=0;
     gen_rand_expr();
 
     sprintf(code_buf, code_format, buf);
-
     FILE *fp = fopen("/tmp/.code.c", "w");
     assert(fp != NULL);
     fputs(code_buf, fp);
     fclose(fp);
 
-    int ret = system("gcc /tmp/.code.c -o /tmp/.expr");
+    int ret = system("gcc -O0 -w -fsanitize=integer-divide-by-zero -fsanitize-undefined-trap-on-error /tmp/.code.c -o /tmp/.expr");
     if (ret != 0) continue;
-
     fp = popen("/tmp/.expr", "r");
     assert(fp != NULL);
-
     unsigned result=0;
+    
     ret = fscanf(fp, "%u", &result);
     pclose(fp);
     if (ret != 1) {
-      fprintf(stderr, "[READ-FAIL] cannot parse output, expr=\"%s\"\n", buf);
+      i--;
+      //fprintf(stderr, "[READ-FAIL] cannot parse output, expr=\"%s\"\n", buf);
       continue;
     }
 

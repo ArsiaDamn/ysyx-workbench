@@ -41,7 +41,6 @@ enum {
   TK_GT,   // >
   TK_GE,   // >=
   TK_MOD,  // %
-  
   TK_REG,  // 
 
   /* TODO: Add more token types */
@@ -115,20 +114,19 @@ static bool make_token(char *e) {
   int i;
   regmatch_t pmatch;
 
-  nr_token = 0;
+  nr_token = 0; //已识别token数
 
   while (e[position] != '\0') {
     
-
     /* Try all rules one by one. */
     for (i = 0; i < NR_REGEX; i ++) {
       
       if (regexec(&re[i], e + position, 1, &pmatch, 0) == 0 && pmatch.rm_so == 0) {
-        char *substr_start = e + position;
-        int substr_len = pmatch.rm_eo;
+        char *substr_start = e + position; //匹配的地址
+        int substr_len = pmatch.rm_eo;     //匹配的长度
 
-        Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
-            i, rules[i].regex, position, substr_len, substr_len, substr_start);
+        // Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
+        //     i, rules[i].regex, position, substr_len, substr_len, substr_start);
 
         position += substr_len;
         /* TODO: Now a new token is recognized with rules[i]. Add codes
@@ -136,24 +134,21 @@ static bool make_token(char *e) {
          * of tokens, some extra actions should be performed.
          */
         int ttype = rules[i].token_type;
-        
         if (ttype == TK_NOTYPE){break;}
 
         assert(nr_token < (int)(sizeof(tokens)/sizeof(tokens[0])));  //yichu test
-        tokens[nr_token].type = ttype;
+        tokens[nr_token].type = ttype; //识别到的类型
 
         if(ttype==TK_DEC||ttype==TK_HEX||ttype==TK_REG){
-          int copy_len = substr_len;
-          if(copy_len>(int)sizeof(tokens[nr_token].str)-1){
-            copy_len = (int)sizeof(tokens[nr_token].str)-1;
+          if(substr_len>(int)sizeof(tokens[nr_token].str)-1){
+            substr_len = (int)sizeof(tokens[nr_token].str)-1;
           }
-          memcpy(tokens[nr_token].str,substr_start,copy_len);
-          tokens[nr_token].str[copy_len] = '\0';
+          memcpy(tokens[nr_token].str,substr_start,substr_len);
+          tokens[nr_token].str[substr_len] = '\0';
         }
         else {
           tokens[nr_token].str[0] = '\0';
         }
-
         nr_token++;
 //      switch (rules[i].token_type) {default: TODO();}
         break;
@@ -166,15 +161,15 @@ static bool make_token(char *e) {
     }
   }
   return true;
-/*  for(int j=0;j<nr_token;j++)
-  {printf("token[%d]:type=%d,str=%s\n",j,tokens[j].type,tokens[j].str);}
-*/
+  // for(int j=0;j<nr_token;j++)
+  // {printf("token[%d]:type=%d,str=%s\n",j,tokens[j].type,tokens[j].str);}
+
 }
 
 
 
 // 666666666666666666666666666666666666666666666666666666666666666666666
-/* 把一元 '-' 标记成 TK_NEG*/
+// 一元-,TK_NEG
 static void mark_unary_minus(void) {
   for (int i = 0; i < nr_token; i++) {
     if (tokens[i].type == '-') {
@@ -182,7 +177,7 @@ static void mark_unary_minus(void) {
         tokens[i].type = TK_NEG;
       } else {
         int prev = tokens[i - 1].type;
-        // 前不是右值结尾，'-' 是负号
+        // 前不是右值结尾，'-'负号
         if (prev == '(' || prev == '+' || prev == '-' || prev == '*' ||
             prev == '/' || prev == TK_MOD || prev == TK_EQ || prev == TK_NEQ ||
             prev == TK_AND || prev == TK_OR ||
@@ -192,10 +187,10 @@ static void mark_unary_minus(void) {
         }
       }
     }
-  }
+  }  
 }
 
-/* 把一元 * 记为 TK_DEREF */
+// 一元*,TK_DEREF 
 static void mark_deref(void) {
   for (int i = 0; i < nr_token; i++) {
     if (tokens[i].type == '*') {
@@ -203,7 +198,7 @@ static void mark_deref(void) {
         tokens[i].type = TK_DEREF;
       } else {
         int prev = tokens[i - 1].type;
-        // 前不是右值结尾，'*' 是解引用
+        // 前不是右值结尾，'*'解引用
         if (!(prev == TK_DEC || prev == TK_HEX || prev == TK_REG || prev == ')')) {
           tokens[i].type = TK_DEREF;
         }
@@ -212,7 +207,7 @@ static void mark_deref(void) {
   }
 }
 
-//* 判断 [p..q] 是否被外层括号完整包住
+// [p,q]被一对外括号包住 11111111111111
 static bool check_parentheses(int p, int q, bool *ok) {
   if (p > q) { *ok = false; return false; }
   if (tokens[p].type != '(' || tokens[q].type != ')') return false;
@@ -223,7 +218,7 @@ static bool check_parentheses(int p, int q, bool *ok) {
     else if (tokens[i].type == ')') {
       depth--;
       if (depth < 0) { *ok = false; return false; }
-      // 如果i < q深度回到 0，外层括号提前闭合
+      // i<q，外括闭合
       if (depth == 0 && i < q) return false;
     }
   }
@@ -245,10 +240,10 @@ static int precedence(int type) {
   }
 }
 
-// 选择主导运算符：最低优先级左结合,找不到返回 -1，错误时 *ok=false
+// 主导运算符：最低优先级左结合
 static int dominant_op(int p, int q, bool *ok) {
-  int best = -1;
-  int best_prec = 100;
+  int best = -1;        //目前主导算符位置
+  int best_prec = 100;  //目前主导算符优先级
   int depth = 0;
 
   for (int i = p; i <= q; i++) {
@@ -260,26 +255,25 @@ static int dominant_op(int p, int q, bool *ok) {
       if (depth < 0) { *ok = false; return -1; }
       continue;
     }
-    if (depth > 0) continue; // 括号内忽略
+    if (depth > 0) continue;
 
-    // 只考虑双运算符
+    // 双运算符       
     if (t == TK_EQ || t == '+' || t == '-' || t == '*' || t == '/') {
       int prec = precedence(t);
       if (prec <= best_prec) {
         best_prec = prec;
-        best = i;           // 更低优先级，直接更新
+        best = i;  
       }
-      // 同级不更新，保持左结合
     }
   }
   return best;
 }
 
-//计算tokens[p..q],出错ok=false 
+// 计算tokens[p,q],出错ok=false 
 static word_t eval(int p, int q, bool *ok) {
   if (p > q) { *ok = false; return 0; }
 
-  // 1) 单 token：必须是数字或寄存器
+  // 单token,数字或寄存器
   if (p == q) {
     int t = tokens[p].type;
     if (t == TK_DEC) {
@@ -289,11 +283,9 @@ static word_t eval(int p, int q, bool *ok) {
       return (word_t)strtoul(tokens[p].str, NULL, 16);
     } 
     else if (t == TK_REG) {
-      // 跳过前缀 '$'，询问寄存器值
-      const char *name = tokens[p].str + 1;
+      const char *name = tokens[p].str + 1;  //跳过$
       bool succ = false;
       word_t val = isa_reg_str2val(name, &succ);
-
       /*
       //////////////////////1111111111111111111111111111111111111111111111
 
@@ -303,7 +295,6 @@ static word_t eval(int p, int q, bool *ok) {
       }
       ///////////////////////1111111111111111111111111111111111111111111111
       */
-     
       if (!succ) {
         printf("Unknown register: %s\n", tokens[p].str);
         *ok = false;
@@ -312,35 +303,35 @@ static word_t eval(int p, int q, bool *ok) {
       return val;
     } 
     else {
-      // 单个 token 但不可求值
       *ok = false;
       return 0;
     }
   }
 
-  // 2) 去外层括号
+  // 去外层括号
   if (check_parentheses(p, q, ok)) {
     if (!*ok) return 0;
     return eval(p + 1, q - 1, ok);
   }
   if (!*ok) return 0;
 
-  // 3) 如果起点 TK_NEG，求右边并取负
+  // TK_NEG，求右取负
   if (tokens[p].type == TK_NEG) {
     word_t rhs = eval(p + 1, q, ok);
     if (!*ok) return 0;
-
-    int32_t s = -(int32_t)rhs;          // 32 位有符号取负     
-    return (word_t)(uint32_t)s;         // 以无符号形式返回
+    int32_t s = -(int32_t)rhs;            
+    return (word_t)(uint32_t)s;         
   }
-  // 4) 取非！
+
+  // 取非！
   if (tokens[p].type == TK_NOT) {
     word_t rhs = eval(p + 1, q, ok);
     if (!*ok) return 0;
     uint32_t r = ((int32_t)rhs == 0) ? 1u : 0u;
     return (word_t)r;
   }
-  // 5) 指针解
+
+  // 指针解
   if (tokens[p].type == TK_DEREF) {
     word_t addr = eval(p + 1, q, ok);
     if (!*ok) return 0;
@@ -348,18 +339,18 @@ static word_t eval(int p, int q, bool *ok) {
     return val;
   }
 
-  // 6) 找到顶层主导运算符
+  // 找顶层主导运算符
   int op = dominant_op(p, q, ok);
   if (!*ok) return 0;
   if (op < 0) { *ok = false; return 0; }
 
-  // 5) 递归计算左右两边
+  // 递归计算左右两边
   word_t lhs = eval(p, op - 1, ok);
   if (!*ok) return 0;
   word_t rhs = eval(op + 1, q, ok);
   if (!*ok) return 0;
 
-  // 6) 运算version1
+  //运算version1
 /*  switch (tokens[op].type) {
     case TK_EQ: return (lhs == rhs) ? 1 : 0;
     case '+':   return lhs + rhs;
@@ -378,7 +369,7 @@ static word_t eval(int p, int q, bool *ok) {
   }
 }
 */
-// 6) 运算version2
+//运算version2
   int32_t lhs_s = (int32_t)lhs;   int32_t rhs_s = (int32_t)rhs;
   switch (tokens[op].type) {
     case TK_OR: {
@@ -404,19 +395,19 @@ static word_t eval(int p, int q, bool *ok) {
     case '-': {
       int64_t s = (int64_t)lhs_s - (int64_t)rhs_s;
       return (word_t)(uint32_t)(int32_t)s;
-    }
+    } 
     case '*': {
       int64_t s = (int64_t)lhs_s * (int64_t)rhs_s;
       return (word_t)(uint32_t)(int32_t)s;
     }
     case '/': {
       if (rhs_s == 0) { printf("Division by zero\n"); *ok = false; return 0; }
-      int32_t s = lhs_s / rhs_s;       // 有符号整除（向 0 取整）
+      int32_t s = lhs_s / rhs_s;      
       return (word_t)(uint32_t)s;
     }
     case TK_MOD: {
       if (rhs_s == 0) { printf("Modulo by zero\n"); *ok = false; return 0; }
-      int32_t s = lhs_s % rhs_s;       // 有符号取模
+      int32_t s = lhs_s % rhs_s;      
       return (word_t)(uint32_t)s;
     }
     default:

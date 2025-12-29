@@ -17,9 +17,9 @@ sim:
 wave:
 	@if [ -z "$(VSRCS)" ]; then echo "no Verilog sources found in vsrc/"; exit 1; fi
 	@if [ -z "$(CSRCS)" ]; then echo "no C/C++ sources found in csrc/"; exit 1; fi
-	verilator -Wall --trace --cc $(VSRCS) --top-module $(TOP) --exe $(CSRCS)
-	$(MAKE) -C obj_dir -f V$(TOP).mk V$(TOP)
-	./obj_dir/V$(TOP)
+#	verilator -Wall --trace --cc $(VSRCS) --top-module $(TOP) --exe $(CSRCS)
+#	$(MAKE) -C obj_dir -f V$(TOP).mk V$(TOP)
+#	./obj_dir/V$(TOP)
 	@if [ -f wave.vcd ]; then \
 		if command -v gtkwave >/dev/null 2>&1; then gtkwave wave.vcd & else echo "gtkwave not found. install: sudo apt-get install -y gtkwave"; fi; \
 	else \
@@ -33,7 +33,7 @@ clean:
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TOPNAME ?= $(TOP)
 INC_PATH ?= $(NVBOARD_HOME)/usr/include
-# 约束文件（默认 constr/top.nxdc；按实际工程可改）
+# 约束文件
 NXDC_FILES ?= constr/top.nxdc
 
 VERILATOR := verilator

@@ -22,7 +22,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
+#include <utils.h>
+
 
 static int is_batch_mode = false;
 
@@ -52,9 +53,9 @@ static int cmd_c(char *args) {
   return 0;
 }
 
-
 static int cmd_q(char *args) {
-  exit(0);
+  nemu_state.state=NEMU_QUIT;
+  return -1;
 }
 
 // 单步执行：si [N]，默认 N=1
@@ -65,29 +66,28 @@ static int cmd_si(char *args) {
     while (*args == ' ') args++;
     if (*args != '\0') {
       char *end = NULL;
-      long v = strtol(args, &end, 10);
+      int v = strtol(args, &end, 10);
       if (end == args) {
         printf("Usage: si [N]\n");
         return 0;
       }
       if (v <= 0) v = 1;
-      n = (int)v;
+      n = v;
     }
   }
   cpu_exec(n);
   return 0;
 }
 
-// 扫描内存：x N EXPR（本版本先支持立即数 EXPR，十六进制或十进制）
+// 扫描内存：x N EXPR
 static int cmd_x(char *args) {
   if (args == NULL) {
     printf("Usage: x N EXPR\n");
     return 0;
   }
 
-  // 第一个参数 N
+  // N EXPR
   char *n_str = strtok(args, " \t");
-  // 第二个参数 EXPR（立即数解析）
   char *expr_str = strtok(NULL, " \t");
 
   if (n_str == NULL || expr_str == NULL) {
@@ -96,7 +96,7 @@ static int cmd_x(char *args) {
   }
 
   char *end = NULL;
-  long n = strtol(n_str, &end, 10);
+  int n = strtol(n_str, &end, 10);
   if (end == n_str || n <= 0) {
     printf("Invalid N: %s\n", n_str);
     return 0;
@@ -109,11 +109,11 @@ static int cmd_x(char *args) {
     addr = strtoull(expr_str, &end, 10);
   }
   if (end == expr_str) {
-    printf("Invalid EXPR (expect hex or dec immediate): %s\n", expr_str);
+    printf("Invalid EXPR ,expect hex or dec %s\n", expr_str);
     return 0;
   }
 
-  // riscv32 每项读 4 字节，逐项输出
+  // riscv32 每项读4字节，逐项输出
   for (long i = 0; i < n; i++) {
     uint32_t data = vaddr_read((vaddr_t)(addr + i * 4), 4);
     printf("0x%08llx: 0x%08x\n", addr + i * 4, data);
@@ -133,11 +133,7 @@ static int cmd_p(char *args){
     printf("Bad expression: %s\n", args);
     return 0;
   }
-#if __riscv_xlen == 64 || defined(CONFIG_ISA64)
-  printf("= 0x%016lx (%lu)\n", (unsigned long)val, (unsigned long)val);
-#else
   printf("= 0x%08x (%u)\n", (unsigned)val, (unsigned)val);
-#endif
   return 0;
 }
 
@@ -182,18 +178,18 @@ static int cmd_d(char *args) {
   if (*args=='\0') { printf("Usage: d N\n"); return 0; }
 
   char *end=NULL;
-  long no = strtol(args,&end,10);
+  int no = strtol(args,&end,10);
   if (end==args || no<0) {
     printf("Bad number: %s\n", args);
     return 0;
   }
-  WP *wp = find_wp((int)no);
+  WP *wp = find_wp(no);
   if (!wp) {
-    printf("No such watchpoint: %ld\n", no);
+    printf("No such watchpoint: %d\n", no);
     return 0;
   }
   free_wp(wp);
-  printf("Deleted watchpoint %ld\n", no);
+  printf("Deleted watchpoint %d\n", no);
   return 0;
 }
 
@@ -204,19 +200,18 @@ static int cmd_info(char *args) {
     return 0;
   }
   while (*args == ' ') args++;
-  if (args[0] == 'r' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')) {
+  if (args[0] == 'r' && (args[1] == '\0')) {
     isa_reg_display();
   } 
-  else if (args[0] == 'w' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')){
+  else if (args[0] == 'w' && (args[1] == '\0')){
     if (!head) {
       printf("No watchpoints.\n");
     }
     else {
-      printf("Num  Expression                        Value(dec)   Value(hex)\n");
+      printf("No.\tReg\t\tValue(dec)\tValue(hex)\n");
       for (WP *p = head; p; p = p->next) {
-        printf("%3d  %-32s %10u   0x%08x\n",
-               p->NO,
-               p->expr[0] ? p->expr : "(unset)",
+        printf("%3d\t%s\t\t%u\t0x%08x\n",
+               p->NO,p->expr,
                p->last_val, p->last_val);
       }
     }
@@ -238,10 +233,10 @@ static int cmd_info(char *args) {
     return 0;
   }
   while (*args == ' ') args++;
-  if (args[0] == 'r' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')) {
+  if (args[0] == 'r' && (args[1] == '\0')) {
     isa_reg_display();
   }
-  else if (args[0] == 'w' && (args[1] == '\0' || args[1] == ' ' || args[1] == '\n')){
+  else if (args[0] == 'w' && (args[1] == '\0')){
     printf("Watchpoints disabled.\n");
   }
   else {
@@ -252,7 +247,7 @@ static int cmd_info(char *args) {
 }
 #endif
 
-//test-expr PATH: 批量读取 PATH， expr() 校验
+//test-expr PATH: 批量读PATH，expr()校验
 static int cmd_test_expr(char *args) {
   if (args == NULL) {
     printf("Usage: test-expr PATH\n");
@@ -264,8 +259,7 @@ static int cmd_test_expr(char *args) {
     return 0;
   }
 
-  const char *path = args;  // 简单起见：把余下整行当作路径（若含空格可自行加引号并去掉）
-
+  const char *path = args;
   FILE *fp = fopen(path, "r");
   if (fp == NULL) {
     printf("Cannot open input file: %s\n", path);
@@ -273,7 +267,7 @@ static int cmd_test_expr(char *args) {
   }
 
   char line[1 << 16];
-  unsigned total = 0, fail = 0;
+  int total = 0, fail = 0;
   while (fgets(line, sizeof(line), fp)) {
     total++;
     char *p = line;
@@ -282,37 +276,35 @@ static int cmd_test_expr(char *args) {
 
     unsigned expected = 0;
     int off = 0;
-    if (sscanf(p, "%u %n", &expected, &off) != 1) {
-      printf("[WARN] Bad line: %s", line);
-      continue;
-    }
+    // if (sscanf(p, "%u %n", &expected, &off) != 1) {
+    //   printf("[WARN] Bad line: %s", line);
+    //   continue;
+    // }
+    sscanf(p, "%u %n", &expected, &off);
     char *expr_str = p + off;
     expr_str[strcspn(expr_str, "\r\n")] = '\0';
 
     bool ok = true;
     word_t got = expr(expr_str, &ok);
     if (!ok) {
-      printf("[FAIL LINE:%u] expr() parse/eval failed | %s\n", total,expr_str);
+      printf("[FAIL LINE:%d] expr() parse/eval failed | %s\n", total,expr_str);
       fail++;
     } else if (got != (word_t)expected) {
-      printf("[FAIL LINE:%u] expect=%u got=%u | %s\n", total , expected, (unsigned)got, expr_str);
+      printf("[FAIL LINE:%d] expect=%u got=%u | %s\n", total , expected, (unsigned)got, expr_str);
       fail++;
     }
-    
   }
-
   fclose(fp);
-  printf("[SUMMARY] %u cases, %u failed\n", total, fail);
+  printf("[SUMMARY] %d cases, %d failed\n", total, fail);
   return 0;
 }
-
 
 static int cmd_help(char *args);
 
 static struct {
   const char *name;
   const char *description;
-  int (*handler) (char *);
+  int (*handler) (char *);//1111
 } cmd_table [] = {
   { "help", "Display information about all supported commands",    cmd_help },
   { "c", "Continue the execution of the program",                  cmd_c },
@@ -364,7 +356,6 @@ void sdb_mainloop() {
     cmd_c(NULL);
     return;
   }
-
   for (char *str; (str = rl_gets()) != NULL; ) {
     char *str_end = str + strlen(str);
 

@@ -33,8 +33,11 @@ int main(int argc, char *argv[]) {
   init_monitor(argc, argv);
 #endif
 
+  /* Start engine. */
+  engine_start();
 
-
+  return is_exit_status_bad();
+}
 /*
 ///////////////////////////////////////////////////////////////////////
   if (argc > 1) {
@@ -48,21 +51,20 @@ int main(int argc, char *argv[]) {
     unsigned total = 0, fail = 0;
 
     while (fgets(line, sizeof(line), fp)) {
-      // 跳过空行
+      // 跳空行
       char *p = line;
       while (*p == ' ' || *p == '\t') p++;
       if (*p == '\0' || *p == '\n') continue;
 
-      // 解析“期望结果 + 空格 + 表达式”
+      // “结果 + 空格 + 表达式”
       unsigned expected = 0;
       int off = 0;
       if (sscanf(p, "%u %n", &expected, &off) != 1) {
-        // 行格式不对，跳过
         printf("[WARN] Bad line: %s", line);
         continue;
       }
       char *expr_str = p + off;
-      // 去掉行尾换行
+      // 去换行
       expr_str[strcspn(expr_str, "\r\n")] = '\0';
 
       bool ok = true;
@@ -80,12 +82,6 @@ int main(int argc, char *argv[]) {
     printf("[SUMMARY] %u cases, %u failed\n", total, fail);
     return fail ? 1 : 0;
   }
-
-
 /////////////////////////////////////////////////////////////////////////////////////////
 */
-  /* Start engine. */
-  engine_start();
 
-  return is_exit_status_bad();
-}
