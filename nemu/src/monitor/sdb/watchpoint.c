@@ -26,7 +26,7 @@
 //#define WP_EXPR_MAX 256
 
 /*
-  //结构体已在 sdb.h 中定义
+  //结构体已在sdb.h中定义
   typedef struct watchpoint {
   int NO;
   struct watchpoint *next;
@@ -71,7 +71,6 @@ WP* new_wp() {
 // head释放到free_
 void free_wp(WP *wp) {
   if (wp == NULL) return;
-  // 从head删掉
   if (head == wp) {
     head = wp->next;
   } else {
@@ -80,16 +79,14 @@ void free_wp(WP *wp) {
     assert(prev && "Attempt to free a watchpoint not in active list");
     if (prev) prev->next = wp->next;
   }
-
-  // 放回free头
   wp->next = free_;
   free_ = wp;
 }
 
-// 遍历接口（info w）
-WP* wp_head() {
-  return head;
-}
+// // info w
+// WP* wp_head() {
+//   return head;
+// }
 
 // NO. d命令
 WP* find_wp(int no) {
@@ -99,19 +96,19 @@ WP* find_wp(int no) {
   return NULL;
 }
 
-// info w
-void list_watchpoints() {
-  if (!head) {
-    printf("No watchpoints.\n");
-    return;
-  }
-  printf("Num Expr                               Value(dec/hex)\n");
-  for (WP *p = head; p; p = p->next) {
-    printf("%3d %-32s %10u (0x%08x)\n",
-           p->NO,p->expr,
-           p->last_val, p->last_val);
-  }
-}
+// // info w
+// void list_watchpoints() {
+//   if (!head) {
+//     printf("No watchpoints.\n");
+//     return;
+//   }
+//   printf("Num Expr                               Value(dec/hex)\n");
+//   for (WP *p = head; p; p = p->next) {
+//     printf("%3d %-32s %10u (0x%08x)\n",
+//            p->NO,p->expr,
+//            p->last_val, p->last_val);
+//   }
+// }
 
 // 1触发
 int check_watchpoints() {
@@ -121,7 +118,6 @@ int check_watchpoints() {
     bool ok = true;
     word_t val = expr(p->expr, &ok);
     if (!ok) {
-      // 解析失败
       printf("Watchpoint %d: expr parse error: %s\n", p->NO, p->expr);
       continue;
     }

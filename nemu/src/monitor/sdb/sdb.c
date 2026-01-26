@@ -58,11 +58,10 @@ static int cmd_q(char *args) {
   return -1;
 }
 
-// 单步执行：si [N]，默认 N=1
+// 单步执行：si [N]，默认N=1
 static int cmd_si(char *args) {
   int n = 1;
   if (args != NULL) {
-    // 跳过前导空格
     while (*args == ' ') args++;
     if (*args != '\0') {
       char *end = NULL;
@@ -112,8 +111,6 @@ static int cmd_x(char *args) {
     printf("Invalid EXPR ,expect hex or dec %s\n", expr_str);
     return 0;
   }
-
-  // riscv32 每项读4字节，逐项输出
   for (long i = 0; i < n; i++) {
     uint32_t data = vaddr_read((vaddr_t)(addr + i * 4), 4);
     printf("0x%08llx: 0x%08x\n", addr + i * 4, data);
@@ -149,10 +146,8 @@ static int cmd_w(char *args) {
     printf("Usage: w EXPR\n");
     return 0;
   }
-  // 申请监视点
   WP *wp = new_wp();
-  // 保存表达式
-  strncpy(wp->expr, args, sizeof(wp->expr)-1);
+  strncpy(wp->expr, args, sizeof(wp->expr)-1); // 保存表达式
   wp->expr[sizeof(wp->expr)-1] = '\0';
   // 求初值
   bool ok = true;
@@ -276,10 +271,6 @@ static int cmd_test_expr(char *args) {
 
     unsigned expected = 0;
     int off = 0;
-    // if (sscanf(p, "%u %n", &expected, &off) != 1) {
-    //   printf("[WARN] Bad line: %s", line);
-    //   continue;
-    // }
     sscanf(p, "%u %n", &expected, &off);
     char *expr_str = p + off;
     expr_str[strcspn(expr_str, "\r\n")] = '\0';
@@ -295,7 +286,7 @@ static int cmd_test_expr(char *args) {
     }
   }
   fclose(fp);
-  printf("[SUMMARY] %d cases, %d failed\n", total, fail);
+  printf("[SUMMARY] %d total, %d fail\n", total, fail);
   return 0;
 }
 
@@ -304,7 +295,7 @@ static int cmd_help(char *args);
 static struct {
   const char *name;
   const char *description;
-  int (*handler) (char *);//1111
+  int (*handler) (char *);
 } cmd_table [] = {
   { "help", "Display information about all supported commands",    cmd_help },
   { "c", "Continue the execution of the program",                  cmd_c },

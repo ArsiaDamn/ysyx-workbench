@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-////////////// add ////////////////
+
 typedef struct watchpoint {
   int NO;
   struct watchpoint *next;
@@ -37,7 +37,7 @@ void free_wp(WP *wp);
 WP* find_wp(int no);          
 void list_watchpoints(void);      
 int  check_watchpoints(void);     
-////////////// add ////////////////
+
 
 word_t expr(char *e, bool *success);
 #endif

@@ -80,7 +80,6 @@ static void exec_once(Decode *s, vaddr_t pc) {
 #endif
 }
 
-///6666666666666666666666666666666666666666666666666666666
 static void execute(uint64_t n) {
   Decode s;
   for (;n > 0; n --) {
@@ -92,7 +91,6 @@ static void execute(uint64_t n) {
     IFDEF(CONFIG_DEVICE, device_update());
   }
 }
-///66666666666666666666666666666666666666666666666666666666
 
 static void statistic() {
   IFNDEF(CONFIG_TARGET_AM, setlocale(LC_NUMERIC, ""));

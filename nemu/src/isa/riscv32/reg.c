@@ -33,18 +33,17 @@ void isa_reg_display() {
   printf("pc  0x%08x\n", cpu.pc);
 }
 
-/// xi:fp
+/// xi
 static int xi(const char *s) {
   if (strcmp(s, "fp") == 0) return 8;   // s0
-  if (strcmp(s, "x0") == 0) return 0;
+  if (strcmp(s, "x0") == 0) return 0;   // zero
   if (s[0] == 'x' && isdigit((unsigned char)s[1])) {
-    // 支持 xN
     int idx = 0;
     for (int i = 1; s[i]; i++) {
       if (!isdigit((unsigned char)s[i])) return -1;
       idx = idx * 10 + (s[i] - '0');
     }
-    if (idx >= 0 && idx < 32) return idx;
+    if (idx < 32) return idx;
   }
   return -1;
 }

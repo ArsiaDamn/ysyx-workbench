@@ -168,7 +168,6 @@ static bool make_token(char *e) {
 
 
 
-// 666666666666666666666666666666666666666666666666666666666666666666666
 // 一元-,TK_NEG
 static void mark_unary_minus(void) {
   for (int i = 0; i < nr_token; i++) {
@@ -207,7 +206,7 @@ static void mark_deref(void) {
   }
 }
 
-// [p,q]被一对外括号包住 11111111111111
+// ( [p,q] )
 static bool check_parentheses(int p, int q, bool *ok) {
   if (p > q) { *ok = false; return false; }
   if (tokens[p].type != '(' || tokens[q].type != ')') return false;
@@ -269,7 +268,7 @@ static int dominant_op(int p, int q, bool *ok) {
   return best;
 }
 
-// 计算tokens[p,q],出错ok=false 
+// 算tokens[p,q]
 static word_t eval(int p, int q, bool *ok) {
   if (p > q) { *ok = false; return 0; }
 
@@ -283,18 +282,9 @@ static word_t eval(int p, int q, bool *ok) {
       return (word_t)strtoul(tokens[p].str, NULL, 16);
     } 
     else if (t == TK_REG) {
-      const char *name = tokens[p].str + 1;  //跳过$
+      const char *name = tokens[p].str + 1;  //$
       bool succ = false;
       word_t val = isa_reg_str2val(name, &succ);
-      /*
-      //////////////////////1111111111111111111111111111111111111111111111
-
-      if (!succ &&(strcmp(name,"pc")==0)){
-        succ = true;
-        val = cpu.pc;
-      }
-      ///////////////////////1111111111111111111111111111111111111111111111
-      */
       if (!succ) {
         printf("Unknown register: %s\n", tokens[p].str);
         *ok = false;
@@ -339,7 +329,7 @@ static word_t eval(int p, int q, bool *ok) {
     return val;
   }
 
-  // 找顶层主导运算符
+  // 找主导运算符
   int op = dominant_op(p, q, ok);
   if (!*ok) return 0;
   if (op < 0) { *ok = false; return 0; }
