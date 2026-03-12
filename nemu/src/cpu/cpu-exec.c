@@ -27,9 +27,9 @@
 #define MAX_INST_TO_PRINT 10
 
 CPU_state cpu = {};
-uint64_t g_nr_guest_inst = 0;
-static uint64_t g_timer = 0; // unit: us
-static bool g_print_step = false;
+uint64_t g_nr_guest_inst = 0; //total number of instructions executed in guest
+static uint64_t g_timer = 0; // unit: us;total time spent on executing guest instructions
+static bool g_print_step = false;  // whether to print the assembly code of instructions executed
 
 void device_update();
 
@@ -52,8 +52,8 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
 static void exec_once(Decode *s, vaddr_t pc) {
   s->pc = pc;
   s->snpc = pc;
-  isa_exec_once(s);
-  cpu.pc = s->dnpc;
+  isa_exec_once(s);   // set s->dnpc
+  cpu.pc = s->dnpc;   // set cpu.pc for next instruction
 #ifdef CONFIG_ITRACE
   char *p = s->logbuf;
   p += snprintf(p, sizeof(s->logbuf), FMT_WORD ":", s->pc);

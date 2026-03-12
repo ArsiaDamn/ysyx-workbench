@@ -18,9 +18,9 @@
 #include <cpu/ifetch.h>
 #include <cpu/decode.h>
 
-#define R(i) gpr(i)
-#define Mr vaddr_read
-#define Mw vaddr_write
+#define R(i) gpr(i)    // register i
+#define Mr vaddr_read  // read memory
+#define Mw vaddr_write // write memory
 
 enum {
   TYPE_I, TYPE_U, TYPE_S,
@@ -34,7 +34,7 @@ enum {
 #define immS() do { *imm = (SEXT(BITS(i, 31, 25), 7) << 5) | BITS(i, 11, 7); } while(0)
 
 static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_t *imm, int type) {
-  uint32_t i = s->isa.inst;
+  uint32_t i = s->isa.inst;  // the 32bit instruction 
   int rs1 = BITS(i, 19, 15);
   int rs2 = BITS(i, 24, 20);
   *rd     = BITS(i, 11, 7);

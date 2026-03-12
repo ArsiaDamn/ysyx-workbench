@@ -64,7 +64,7 @@ static long load_img() {
   int ret = fread(guest_to_host(RESET_VECTOR), size, 1, fp);
   assert(ret == 1);
 
-  fclose(fp);
+  fclose(fp); 
   return size;
 }
 
