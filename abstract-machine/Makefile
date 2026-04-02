@@ -168,5 +168,3 @@ clean-all: $(CLEAN_ALL) clean
 $(CLEAN_ALL):
 	-@$(MAKE) -s -C $@ clean
 .PHONY: clean-all $(CLEAN_ALL)
-STUID = ysyx_26010001
-SUDNAME = 李卓恒
