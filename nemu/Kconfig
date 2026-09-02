@@ -166,6 +166,11 @@ config IRINGBUF
   bool "Enable instruction ring buffer"
   default n
 
+config FTRACE
+  depends on TRACE && TARGET_NATIVE_ELF
+  bool "Enable function tracer"
+  default n
+  
 config DIFFTEST
   depends on TARGET_NATIVE_ELF
   bool "Enable differential testing"
