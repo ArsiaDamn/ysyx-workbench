@@ -33,10 +33,38 @@ static bool g_print_step = false;  // whether to print the assembly code of inst
 
 void device_update();
 
+#ifdef CONFIG_IRINGBUF
+  #define IRINGBUF_SIZE 16
+  static char iringbuf[IRINGBUF_SIZE][128];
+  static int iringbuf_head = 0;      
+  static bool iringbuf_full = false;
+  static void iringbuf_dump(void){
+    int start = iringbuf_full ? iringbuf_head : 0;
+    int count = iringbuf_full ? IRINGBUF_SIZE : iringbuf_head;
+    printf("recently executed instructions:\n");
+    for (int i = 0; i < count; i ++) {
+      printf("  %s\n", iringbuf[(start + i) % IRINGBUF_SIZE]);
+    }
+    printf("-->  " FMT_WORD "\n", cpu.pc);
+  }
+#endif
+
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
 #ifdef CONFIG_ITRACE_COND
   if (ITRACE_COND) { log_write("%s\n", _this->logbuf); }
 #endif
+
+#ifdef CONFIG_IRINGBUF
+  snprintf(iringbuf[iringbuf_head], sizeof(iringbuf[iringbuf_head]), "%s", _this->logbuf);
+  iringbuf_head = (iringbuf_head + 1) % IRINGBUF_SIZE;
+  if (iringbuf_head == 0) {
+    iringbuf_full = true;
+  }
+  else {
+    iringbuf_full = false;
+  }
+#endif
+
   if (g_print_step) { IFDEF(CONFIG_ITRACE, puts(_this->logbuf)); }
   IFDEF(CONFIG_DIFFTEST, difftest_step(_this->pc, dnpc));
   
@@ -102,6 +130,7 @@ static void statistic() {
 }
 
 void assert_fail_msg() {
+  iringbuf_dump();
   isa_reg_display();
   statistic();
 }

@@ -55,7 +55,7 @@ word_t isa_reg_str2val(const char *s, bool *success) {
     if (strcmp(s, regs[i]) == 0) {
       if (success) *success = true;
       return (word_t)cpu.gpr[i];
-    }
+    } 
   }
   // x[i]
   int idx = xi(s);
